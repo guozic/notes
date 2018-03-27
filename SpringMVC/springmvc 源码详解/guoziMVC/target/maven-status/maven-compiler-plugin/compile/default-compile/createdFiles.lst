@@ -1,0 +1,5 @@
+com\guozi\core\controller\TestController.class
+com\guozi\servlet\MyDispatcherServlet.class
+com\guozi\annotation\MyRequestParam.class
+com\guozi\annotation\MyController.class
+com\guozi\annotation\MyRequestMapping.class
