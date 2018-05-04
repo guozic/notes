@@ -119,17 +119,17 @@
 
 ## **6、小技巧**
 
->- **顶部工具栏  File -> Other Settings -> Default Settings -> Auto Import**
+>- 顶部工具栏  File -> Other Settings -> Default Settings -> Auto Import
 >
->- **IntelliJ IDEA 默认是会折叠空包的，这样就会出现包名连在一起的情况。但是有些人不喜欢这种结构，喜欢整个结构都是完整树状的，所以我们可以去掉演示中的勾选框即可**
->  **点击项目src下的main 再点击左上角右侧小齿轮 点击第二个取消默认折叠空包**
+>- IntelliJ IDEA 默认是会折叠空包的，这样就会出现包名连在一起的情况。但是有些人不喜欢这种结构，喜欢整个结构都是完整树状的，所以我们可以去掉演示中的勾选框即可
+>  点击项目src下的main 再点击左上角右侧小齿轮 点击第二个取消默认折叠空包
 >
->- **setting  Editor codeStyle java 上面有个隐藏的codeGeneration选项**
->  **左下 line comment at first column可以去掉勾选 这样//行注释就会紧贴代码第一个字而不是在行的开头**
+>- setting  Editor codeStyle java 上面有个隐藏的codeGeneration选项
+>  左下 line comment at first column可以去掉勾选 这样//行注释就会紧贴代码第一个字而不是在行的开头
 >
->- **alt+insert get/set/构造**
+>- alt+insert get/set/构造
 >
->- **ctrl+shift+空格 联想**
+>- ctrl+shift+空格 联想
 >
 >- ****
 >
