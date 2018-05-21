@@ -1042,7 +1042,7 @@ public class DefaultSqlSession implements SqlSession {
    - 实现：
      - 获取configuration中的 MappedStatement  对象  --->   MappedStatement ms = configuration.getMappedStatement(statement)  
        - 此对象 对应mapper.xml 中的 一个 增/删/查/改  
-     -  executor.query(ms, wrapCollection(parameter), rowBounds, Executor.NO_RESULT_HANDLER)
+     - executor.query(ms, wrapCollection(parameter), rowBounds, Executor.NO_RESULT_HANDLER)
        - 目的：
          - 执行SQL，获取结果
        - 实现：
@@ -1055,6 +1055,8 @@ public class DefaultSqlSession implements SqlSession {
              - 先走  CachingExecutor   执行器
 
 
+### org.apache.ibatis.executor.CachingExecutor
+
 
 ```java
 package org.apache.ibatis.executor;
@@ -1065,7 +1067,11 @@ public class CachingExecutor implements Executor {
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    
+    
     BoundSql boundSql = ms.getBoundSql(parameterObject);
+    
+    //--- 创建缓存的 key
     CacheKey key = createCacheKey(ms, parameterObject, rowBounds, boundSql);
     return query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
@@ -1116,6 +1122,35 @@ package org.apache.ibatis.executor;
 public class SimpleExecutor extends BaseExecutor {
 
 	// --  无  query(...)  方法
+  
+  
+  @Override
+  public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+    Statement stmt = null;
+    try {
+      
+      //--- 获取configuration 
+      Configuration configuration = ms.getConfiguration();
+      
+      // ----  获取StatementHandler
+      StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+      
+      stmt = prepareStatement(handler, ms.getStatementLog());
+      return handler.<E>query(stmt, resultHandler);
+      
+    } finally {
+      closeStatement(stmt);
+    }
+  }
+  
+  
+  private Statement prepareStatement(StatementHandler handler, Log statementLog) throws SQLException {
+    Statement stmt;
+    Connection connection = getConnection(statementLog);
+    stmt = handler.prepare(connection, transaction.getTimeout());
+    handler.parameterize(stmt);
+    return stmt;
+  }
 
 }
 ```
@@ -1143,13 +1178,21 @@ public abstract class BaseExecutor implements Executor {
     }
     List<E> list;
     try {
+      
+      
       queryStack++;
       list = resultHandler == null ? (List<E>) localCache.getObject(key) : null;
       if (list != null) {
+        
+        
         handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
       } else {
+        
+        
         list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
       }
+      
+      
     } finally {
       queryStack--;
     }
@@ -1166,8 +1209,65 @@ public abstract class BaseExecutor implements Executor {
     }
     return list;
   }
+  
+  
+  private void handleLocallyCachedOutputParameters(MappedStatement ms, CacheKey key, Object parameter, BoundSql boundSql) {
+    if (ms.getStatementType() == StatementType.CALLABLE) {
+      final Object cachedParameter = localOutputParameterCache.getObject(key);
+      if (cachedParameter != null && parameter != null) {
+        final MetaObject metaCachedParameter = configuration.newMetaObject(cachedParameter);
+        final MetaObject metaParameter = configuration.newMetaObject(parameter);
+        for (ParameterMapping parameterMapping : boundSql.getParameterMappings()) {
+          if (parameterMapping.getMode() != ParameterMode.IN) {
+            final String parameterName = parameterMapping.getProperty();
+            final Object cachedValue = metaCachedParameter.getValue(parameterName);
+            metaParameter.setValue(parameterName, cachedValue);
+          }
+        }
+      }
+    }
+  }
+  
+  // -----------查找 并存入缓存
+   private <E> List<E> queryFromDatabase(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
+    List<E> list;
+    localCache.putObject(key, EXECUTION_PLACEHOLDER);
+    try {
+      
+      // ---- 执行执行器接口 中的方法  此处有具体的实现类  simple执行器执行
+      list = doQuery(ms, parameter, rowBounds, resultHandler, boundSql);
+    } finally {
+      localCache.removeObject(key);
+    }
+    localCache.putObject(key, list);
+    if (ms.getStatementType() == StatementType.CALLABLE) {
+      localOutputParameterCache.putObject(key, parameter);
+    }
+    return list;
+  }
 
 
 }
 ```
+
+
+
+### org.apache.ibatis.executor.statement.SimpleStatementHandler
+
+```JAVA
+package org.apache.ibatis.executor.statement;
+
+public class SimpleStatementHandler extends BaseStatementHandler {
+
+    @Override
+  public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    String sql = boundSql.getSql();
+    statement.execute(sql);
+    return resultSetHandler.<E>handleResultSets(statement);
+  }
+  
+}
+```
+
+
 
