@@ -1,0 +1,39 @@
+===》:原因  ==》若用最初的JDBCUtils  getConnection（新建的Connection的话，
+			每次的数据库操作都要 重新连接数据库，然后释放资源
+		===非常容易消耗资源
+
+===》解决思路：
+			1==》重写工具类Utils，在此工具类中创建一个容器（linkedList集合）pool，
+					当一调用此类时就创建 n 个Connection，然后从集合中获取Connection ==>（pool.removefrist()）
+					使用完毕后就 重写close()方法 将调用的Connection 重写添加进 集合（池子pool）
+					
+			 --->此时出现问题：当集合（池子）中的 Connection 被拿完了，只有新建Connecton,
+					此时，当每个Connection使用完毕后都 添加进 集合的话 那么 集合 终将会爆满  ？？
+				思路==》区分  集合中的Connection 与 新建的Connection   
+						===>两者的创建方法不同 ，在创建集合的Connection中重写 close 方法为 添加 进集合
+													，此时 新建的Connection中的close方法为 释放
+									分析：这样区分开了  集合中的Connection 与  新建的Connection  各自对应各自的close方法
+						
+						问题：如何解决  集合中的Connection 与  新建的Connection？
+						 ==》再创建一个类，也实现Connection接口  ()
+									在里面添加一个  getConnection（）方法
+									并重写 close（）改变其功能为  将传入的 Connection 添加进pool
+							  注意：调用此类的构造函数时  传入 新的connection，及pool
+										给自己的属性Connection 及 pool 赋值
+										此类里面所有其他的方法全部用此Connection 来实现
+										
+	- 装饰者模式
+  目的：改写已存在的类的某个方法或某些方法，装饰设计模式（包装模式）	
+      条件:1.包装类和被包装类实现的是同一个接口
+      	2.包装类里面要拿到被包装类的引用
+
+  步骤:
+
+1. 编写一个类实现一个接口,为被包装类
+2. 编写一个类，实现与被包装类相同的接口。（具备相同的行为）
+3. 定义一个被包装类类型的变量。
+4. 定义构造方法，把被包装类类的对象注入，给被包装类变量赋值。
+5. 对于不需要改写的方法，调用被包装类类原有的方法。
+6. 对于需要改写的方法，写自己的代码。
+
+- 动态代理(类似装饰者模式，此处不学)
